@@ -32,26 +32,26 @@ jobs:
         log-accepted-android-sdk-licenses: true
         packages: "platform-tools build-tools;34.0.0 platforms;android-34 ndk;26.1.10909125"
 
-    - name: Install Android workload
+    - name: Install Xamarin.Android workload
       run: |
-        echo "=== Installing Android workload ==="
-        dotnet workload install android --include-previews
-        echo "=== Verifying installation ==="
-        dotnet workload list | grep -i android || echo "Android workload not found"
+        echo "Installing Android workload..."
+        dotnet workload install microsoft-android-sdk-full || echo "Microsoft Android SDK failed, trying generic android..."
+        dotnet workload install android --skip-manifest-update || echo "First attempt failed, trying alternative method..."
+        dotnet workload install android || echo "Second attempt failed, trying repair..."
+        dotnet workload repair || echo "Repair failed, trying to list available workloads..."
+        dotnet workload list
+        echo "Workload installation completed"
         
-    - name: Verify environment
+    - name: Verify Android workload
       run: |
-        echo "=== .NET SDK Version ==="
-        dotnet --version
         echo "=== Installed Workloads ==="
         dotnet workload list
         echo "=== Available SDKs ==="
         dotnet --list-sdks
         echo "=== Available Runtimes ==="
         dotnet --list-runtimes
-        echo "=== Android SDK Location ==="
-        echo "ANDROID_HOME: $ANDROID_HOME"
-        echo "ANDROID_SDK_ROOT: $ANDROID_SDK_ROOT"
+        echo "=== Checking Android workload specifically ==="
+        dotnet workload list | grep -i android || echo "Android workload not found in list"
 
     - name: Restore NuGet packages
       run: dotnet restore WoWonder.csproj
