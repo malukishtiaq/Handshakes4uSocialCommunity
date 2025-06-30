@@ -1,0 +1,65 @@
+name: Manual Build
+
+on:
+  workflow_dispatch:
+    inputs:
+      build_type:
+        description: 'Build Type'
+        required: true
+        default: 'apk'
+        type: choice
+        options:
+        - apk
+        - aab
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+      
+    - name: Setup .NET
+      uses: actions/setup-dotnet@v4
+      with:
+        dotnet-version: '8.0.x'
+        
+    - name: Setup Java
+      uses: actions/setup-java@v4
+      with:
+        distribution: 'temurin'
+        java-version: '17'
+        
+    - name: Setup Android SDK
+      uses: android-actions/setup-android@v3
+      with:
+        packages: "platform-tools platforms;android-34 build-tools;34.0.0"
+        
+    - name: Install Xamarin.Android workload
+      run: |
+        dotnet workload install android
+        
+    - name: Build APK
+      if: github.event.inputs.build_type == 'apk'
+      run: |
+        dotnet build WoWonder.csproj -c Release -p:AndroidBuildApplicationPackage=true
+        
+    - name: Build AAB
+      if: github.event.inputs.build_type == 'aab'
+      run: |
+        dotnet build WoWonder.csproj -c Release -p:AndroidBuildApplicationPackage=true -p:AndroidPackageFormat=aab
+        
+    - name: Upload APK
+      if: github.event.inputs.build_type == 'apk'
+      uses: actions/upload-artifact@v4
+      with:
+        name: WoWonder-APK
+        path: bin/Release/net8.0-android/*.apk
+        
+    - name: Upload AAB
+      if: github.event.inputs.build_type == 'aab'
+      uses: actions/upload-artifact@v4
+      with:
+        name: WoWonder-AAB
+        path: bin/Release/net8.0-android/*.aab 

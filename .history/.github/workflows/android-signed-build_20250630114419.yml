@@ -28,18 +28,14 @@ jobs:
     - name: Install Android SDK
       uses: android-actions/setup-android@v3
       with:
+        cmdline-tools-version: 12266719
         accept-android-sdk-licenses: true
         log-accepted-android-sdk-licenses: true
-        packages: "platform-tools build-tools;34.0.0 platforms;android-34 ndk;26.1.10909125"
+        packages: "tools platform-tools build-tools;33.0.2 platforms;android-33 ndk;25.2.9519653"
 
     - name: Install Xamarin.Android workload
       run: |
         dotnet workload install android
-        
-    - name: Verify Android workload
-      run: |
-        dotnet workload list
-        echo "Android workload should be listed above"
 
     - name: Restore NuGet packages
       run: dotnet restore WoWonder.csproj
@@ -55,7 +51,14 @@ jobs:
         KEY_ALIAS: ${{ secrets.KEY_ALIAS || 'wowondertimelinechat' }}
         KEY_PASSWORD: ${{ secrets.KEY_PASSWORD || 'wowonder' }}
       run: |
-        dotnet build WoWonder.csproj -c Release -p:AndroidBuildApplicationPackage=true
+        dotnet build WoWonder.csproj \
+          -c Release \
+          -p:AndroidBuildApplicationPackage=true \
+          -p:AndroidKeyStore=true \
+          -p:AndroidSigningKeyStore=KeyApk/wowondertimelinechat.keystore \
+          -p:AndroidSigningStorePass="${KEYSTORE_PASSWORD}" \
+          -p:AndroidSigningKeyAlias="${KEY_ALIAS}" \
+          -p:AndroidSigningKeyPass="${KEY_PASSWORD}"
 
     - name: Build Signed AAB (Android App Bundle)
       env:

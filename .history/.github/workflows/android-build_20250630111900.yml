@@ -23,31 +23,25 @@ jobs:
     - name: Setup Java JDK
       uses: actions/setup-java@v4
       with:
-        java-version: '17'
+        java-version: '11'
         distribution: 'microsoft'
 
     - name: Install Android SDK
       uses: android-actions/setup-android@v3
       with:
-        accept-android-sdk-licenses: true
-        log-accepted-android-sdk-licenses: true
-        packages: "platform-tools build-tools;34.0.0 platforms;android-34"
+        api-level: 33
+        build-tools: 33.0.2
 
     - name: Install Xamarin.Android workload
       run: |
         dotnet workload install android
-        
-    - name: Verify Android workload
-      run: |
-        dotnet workload list
-        echo "Android workload should be listed above"
 
     - name: Restore NuGet packages
       run: dotnet restore WoWonder.csproj
 
     - name: Build Debug APK
       run: |
-        dotnet build WoWonder.csproj -c Debug -p:AndroidBuildApplicationPackage=true -p:TargetFrameworkVersion=v14.0
+        dotnet build WoWonder.csproj -c Debug -p:AndroidBuildApplicationPackage=true
 
     - name: Build Release APK
       run: |
@@ -95,8 +89,8 @@ jobs:
         draft: false
         prerelease: false
         files: |
-          bin/Debug/**/*.apk
-          bin/Release/**/*.apk
-          bin/Release/**/*.aab
+          bin/Debug/*-Signed.apk
+          bin/Release/*-Signed.apk
+          bin/Release/*.aab
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }} 

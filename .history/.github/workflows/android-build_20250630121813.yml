@@ -36,11 +36,6 @@ jobs:
     - name: Install Xamarin.Android workload
       run: |
         dotnet workload install android
-        
-    - name: Verify Android workload
-      run: |
-        dotnet workload list
-        echo "Android workload should be listed above"
 
     - name: Restore NuGet packages
       run: dotnet restore WoWonder.csproj

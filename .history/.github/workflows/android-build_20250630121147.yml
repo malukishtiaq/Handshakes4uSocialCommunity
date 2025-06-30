@@ -36,11 +36,6 @@ jobs:
     - name: Install Xamarin.Android workload
       run: |
         dotnet workload install android
-        
-    - name: Verify Android workload
-      run: |
-        dotnet workload list
-        echo "Android workload should be listed above"
 
     - name: Restore NuGet packages
       run: dotnet restore WoWonder.csproj
@@ -51,11 +46,11 @@ jobs:
 
     - name: Build Release APK
       run: |
-        dotnet build WoWonder.csproj -c Release -p:AndroidBuildApplicationPackage=true
+        dotnet build WoWonder.csproj -c Release -p:AndroidBuildApplicationPackage=true -p:TargetFrameworkVersion=v14.0
 
     - name: Build AAB (Android App Bundle)
       run: |
-        dotnet build WoWonder.csproj -c Release -p:AndroidBuildApplicationPackage=true -p:AndroidPackageFormat=aab
+        dotnet build WoWonder.csproj -c Release -p:AndroidBuildApplicationPackage=true -p:AndroidPackageFormat=aab -p:TargetFrameworkVersion=v14.0
 
     - name: Upload Debug APK
       uses: actions/upload-artifact@v4
