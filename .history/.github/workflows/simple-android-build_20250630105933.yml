@@ -1,0 +1,51 @@
+name: Simple Android Build
+
+on:
+  workflow_dispatch:
+    inputs:
+      build_type:
+        description: 'Build type'
+        required: true
+        default: 'Release'
+        type: choice
+        options:
+        - Debug
+        - Release
+
+jobs:
+  build:
+    runs-on: windows-latest
+
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v4
+
+    - name: Setup MSBuild
+      uses: microsoft/setup-msbuild@v1.3
+
+    - name: Setup NuGet
+      uses: NuGet/setup-nuget@v1
+
+    - name: Setup Xamarin
+      uses: maxim-lobanov/setup-xamarin@v1
+      with:
+        mono-version: 'latest'
+        xamarin-android-version: 'latest'
+
+    - name: Restore NuGet packages
+      run: nuget restore WoWonder.csproj
+
+    - name: Build APK
+      run: |
+        msbuild WoWonder.csproj /p:Configuration=${{ github.event.inputs.build_type }} /p:Platform="Any CPU" /t:PackageForAndroid
+
+    - name: Upload APK Artifact
+      uses: actions/upload-artifact@v3
+      with:
+        name: android-apk-${{ github.event.inputs.build_type }}
+        path: |
+          bin/${{ github.event.inputs.build_type }}/*.apk
+
+    - name: List generated files
+      run: |
+        Get-ChildItem -Recurse -Filter "*.apk" | ForEach-Object { Write-Host $_.FullName } 

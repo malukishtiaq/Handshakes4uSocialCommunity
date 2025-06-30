@@ -1,0 +1,133 @@
+name: Android Signed Build
+
+on:
+  push:
+    tags:
+      - 'v*'
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v4
+
+    - name: Setup .NET
+      uses: actions/setup-dotnet@v3
+      with:
+        dotnet-version: '8.0.x'
+
+    - name: Setup Java JDK
+      uses: actions/setup-java@v3
+      with:
+        java-version: '11'
+        distribution: 'microsoft'
+
+    - name: Install Xamarin.Android
+      run: |
+        wget -O xamarin-android.tar.bz2 https://download.mono-project.com/sources/xamarin-android/xamarin-android-12.0.99.tar.bz2
+        sudo tar -xjf xamarin-android.tar.bz2 -C /opt/
+        echo "ANDROID_SDK_ROOT=/opt/android-sdk" >> $GITHUB_ENV
+        echo "PATH=$PATH:/opt/android-sdk/tools:/opt/android-sdk/platform-tools" >> $GITHUB_ENV
+
+    - name: Install Android SDK
+      uses: android-actions/setup-android@v2
+      with:
+        api-level: 33
+        build-tools: 33.0.2
+        ndk-version: 25.2.9519653
+
+    - name: Restore NuGet packages
+      run: |
+        nuget restore WoWonder.sln || dotnet restore WoWonder.csproj
+
+    - name: Setup keystore for signing
+      run: |
+        echo "Using existing keystore from repository"
+        ls -la KeyApk/
+        
+    - name: Build Signed Release APK
+      env:
+        KEYSTORE_PASSWORD: ${{ secrets.KEYSTORE_PASSWORD || 'wowonder' }}
+        KEY_ALIAS: ${{ secrets.KEY_ALIAS || 'wowondertimelinechat' }}
+        KEY_PASSWORD: ${{ secrets.KEY_PASSWORD || 'wowonder' }}
+      run: |
+        msbuild WoWonder.csproj \
+          /p:Configuration=Release \
+          /p:Platform=AnyCPU \
+          /p:AndroidKeyStore=true \
+          /p:AndroidSigningKeyStore=KeyApk/wowondertimelinechat.keystore \
+          /p:AndroidSigningStorePass="${KEYSTORE_PASSWORD}" \
+          /p:AndroidSigningKeyAlias="${KEY_ALIAS}" \
+          /p:AndroidSigningKeyPass="${KEY_PASSWORD}" \
+          /t:PackageForAndroid
+
+    - name: Build Signed AAB (Android App Bundle)
+      env:
+        KEYSTORE_PASSWORD: ${{ secrets.KEYSTORE_PASSWORD || 'wowonder' }}
+        KEY_ALIAS: ${{ secrets.KEY_ALIAS || 'wowondertimelinechat' }}
+        KEY_PASSWORD: ${{ secrets.KEY_PASSWORD || 'wowonder' }}
+      run: |
+        msbuild WoWonder.csproj \
+          /p:Configuration=Release \
+          /p:Platform=AnyCPU \
+          /p:AndroidPackageFormat=aab \
+          /p:AndroidKeyStore=true \
+          /p:AndroidSigningKeyStore=KeyApk/wowondertimelinechat.keystore \
+          /p:AndroidSigningStorePass="${KEYSTORE_PASSWORD}" \
+          /p:AndroidSigningKeyAlias="${KEY_ALIAS}" \
+          /p:AndroidSigningKeyPass="${KEY_PASSWORD}" \
+          /t:PackageForAndroid
+
+    - name: Find generated files
+      run: |
+        find . -name "*.apk" -type f
+        find . -name "*.aab" -type f
+
+    - name: Upload Signed APK
+      uses: actions/upload-artifact@v3
+      with:
+        name: signed-release-apk
+        path: |
+          bin/Release/*-Signed.apk
+          bin/Release/*.apk
+
+    - name: Upload Signed AAB
+      uses: actions/upload-artifact@v3
+      with:
+        name: signed-android-app-bundle
+        path: |
+          bin/Release/*.aab
+
+    - name: Create GitHub Release
+      if: startsWith(github.ref, 'refs/tags/')
+      uses: softprops/action-gh-release@v1
+      with:
+        files: |
+          bin/Release/*-Signed.apk
+          bin/Release/*.apk
+          bin/Release/*.aab
+        body: |
+          ## Handshakes4u Social Community - Release ${{ github.ref_name }}
+          
+          This release contains:
+          - **APK**: Ready to install on Android devices
+          - **AAB**: For Google Play Store distribution
+          
+          ### Installation
+          1. Download the APK file
+          2. Enable "Install from unknown sources" in your Android settings
+          3. Install the APK file
+          
+          ### Features
+          - Social media functionality
+          - Chat and messaging
+          - Live streaming
+          - Stories and posts
+          - And much more!
+        draft: false
+        prerelease: false
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }} 
