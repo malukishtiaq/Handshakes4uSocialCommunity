@@ -92,16 +92,10 @@ jobs:
           -p:AndroidSigningKeyAlias="${KEY_ALIAS}" \
           -p:AndroidSigningKeyPass="${KEY_PASSWORD}"
 
-    - name: List generated files
+    - name: Find generated files
       run: |
-        echo "=== Generated Files ==="
         find . -name "*.apk" -type f
         find . -name "*.aab" -type f
-        echo "=== Release Directory ==="
-        ls -la bin/Release/ || echo "Release directory not found"
-        echo "=== Net8.0-android Directory ==="
-        find . -name "net8.0-android" -type d
-        find . -name "net8.0-android" -type d -exec ls -la {} \; 2>/dev/null || echo "net8.0-android directory not found"
 
     - name: Upload Signed APK
       uses: actions/upload-artifact@v4
@@ -110,8 +104,6 @@ jobs:
         path: |
           bin/Release/**/*.apk
           bin/Release/**/*-Signed.apk
-          bin/Release/net8.0-android/**/*.apk
-          bin/Release/net8.0-android/**/*-Signed.apk
 
     - name: Upload Signed AAB
       uses: actions/upload-artifact@v4
@@ -119,7 +111,6 @@ jobs:
         name: signed-android-app-bundle
         path: |
           bin/Release/**/*.aab
-          bin/Release/net8.0-android/**/*.aab
 
     - name: Build Summary
       run: |
