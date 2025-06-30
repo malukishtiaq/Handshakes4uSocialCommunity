@@ -1,0 +1,88 @@
+name: Android Build
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v4
+
+    - name: Setup .NET
+      uses: actions/setup-dotnet@v4
+      with:
+        dotnet-version: '8.0.x'
+
+    - name: Setup Java JDK
+      uses: actions/setup-java@v4
+      with:
+        java-version: '11'
+        distribution: 'microsoft'
+
+    - name: Install Xamarin Android
+      run: |
+        sudo apt-get update
+        sudo apt-get install -y mono-complete msbuild
+        
+    - name: Install Android SDK
+      uses: android-actions/setup-android@v2
+      with:
+        api-level: 33
+        build-tools: 33.0.2
+
+    - name: Restore NuGet packages
+      run: dotnet restore WoWonder.csproj
+
+    - name: Build Debug APK
+      run: |
+        msbuild WoWonder.csproj /p:Configuration=Debug /p:Platform=AnyCPU /t:PackageForAndroid
+
+    - name: Build Release APK
+      run: |
+        msbuild WoWonder.csproj /p:Configuration=Release /p:Platform=AnyCPU /t:PackageForAndroid
+
+    - name: Build AAB (Android App Bundle)
+      run: |
+        msbuild WoWonder.csproj /p:Configuration=Release /p:Platform=AnyCPU /p:AndroidPackageFormat=aab /t:PackageForAndroid
+
+    - name: Upload Debug APK
+      uses: actions/upload-artifact@v4
+      with:
+        name: debug-apk
+        path: bin/Debug/*-Signed.apk
+
+    - name: Upload Release APK
+      uses: actions/upload-artifact@v4
+      with:
+        name: release-apk
+        path: bin/Release/*-Signed.apk
+
+    - name: Upload AAB
+      uses: actions/upload-artifact@v4
+      with:
+        name: android-app-bundle
+        path: bin/Release/*.aab
+
+    - name: Create Release
+      if: github.ref == 'refs/heads/main'
+      uses: actions/create-release@v1
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      with:
+        tag_name: v${{ github.run_number }}
+        release_name: Release v${{ github.run_number }}
+        body: |
+          Automated release of Handshakes4u Social Community app
+          
+          ## Downloads
+          - APK: Available in the artifacts section
+          - AAB: Available in the artifacts section
+        draft: false
+        prerelease: false 
