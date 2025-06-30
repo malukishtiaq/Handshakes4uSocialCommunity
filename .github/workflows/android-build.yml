@@ -26,49 +26,53 @@ jobs:
         java-version: '11'
         distribution: 'microsoft'
 
-    - name: Install Xamarin Android
-      run: |
-        sudo apt-get update
-        sudo apt-get install -y mono-complete msbuild
-        
     - name: Install Android SDK
       uses: android-actions/setup-android@v3
       with:
         api-level: 33
         build-tools: 33.0.2
 
+    - name: Install Xamarin.Android workload
+      run: |
+        dotnet workload install android
+
     - name: Restore NuGet packages
       run: dotnet restore WoWonder.csproj
 
     - name: Build Debug APK
       run: |
-        msbuild WoWonder.csproj /p:Configuration=Debug /p:Platform=AnyCPU /t:PackageForAndroid
+        dotnet build WoWonder.csproj -c Debug -p:AndroidBuildApplicationPackage=true
 
     - name: Build Release APK
       run: |
-        msbuild WoWonder.csproj /p:Configuration=Release /p:Platform=AnyCPU /t:PackageForAndroid
+        dotnet build WoWonder.csproj -c Release -p:AndroidBuildApplicationPackage=true
 
     - name: Build AAB (Android App Bundle)
       run: |
-        msbuild WoWonder.csproj /p:Configuration=Release /p:Platform=AnyCPU /p:AndroidPackageFormat=aab /t:PackageForAndroid
+        dotnet build WoWonder.csproj -c Release -p:AndroidBuildApplicationPackage=true -p:AndroidPackageFormat=aab
 
     - name: Upload Debug APK
       uses: actions/upload-artifact@v4
       with:
         name: debug-apk
-        path: bin/Debug/*-Signed.apk
+        path: |
+          bin/Debug/**/*.apk
+          bin/Debug/**/*-Signed.apk
 
     - name: Upload Release APK
       uses: actions/upload-artifact@v4
       with:
         name: release-apk
-        path: bin/Release/*-Signed.apk
+        path: |
+          bin/Release/**/*.apk
+          bin/Release/**/*-Signed.apk
 
     - name: Upload AAB
       uses: actions/upload-artifact@v4
       with:
         name: android-app-bundle
-        path: bin/Release/*.aab
+        path: |
+          bin/Release/**/*.aab
 
     - name: Create Release
       if: github.ref == 'refs/heads/main'
@@ -85,8 +89,8 @@ jobs:
         draft: false
         prerelease: false
         files: |
-          bin/Debug/*-Signed.apk
-          bin/Release/*-Signed.apk
-          bin/Release/*.aab
+          bin/Debug/**/*.apk
+          bin/Release/**/*.apk
+          bin/Release/**/*.aab
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }} 

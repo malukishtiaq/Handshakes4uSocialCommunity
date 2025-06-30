@@ -26,25 +26,28 @@ jobs:
     - name: Setup NuGet
       uses: NuGet/setup-nuget@v2
 
-    - name: Setup Xamarin
-      uses: maxim-lobanov/setup-xamarin@v2
+    - name: Setup .NET
+      uses: actions/setup-dotnet@v4
       with:
-        mono-version: 'latest'
-        xamarin-android-version: 'latest'
+        dotnet-version: '8.0.x'
+
+    - name: Install Xamarin.Android workload
+      run: |
+        dotnet workload install android
 
     - name: Restore NuGet packages
-      run: nuget restore WoWonder.csproj
+      run: dotnet restore WoWonder.csproj
 
     - name: Build APK
       run: |
-        msbuild WoWonder.csproj /p:Configuration=${{ github.event.inputs.build_type }} /p:Platform="Any CPU" /t:PackageForAndroid
+        dotnet build WoWonder.csproj -c ${{ github.event.inputs.build_type }} -p:AndroidBuildApplicationPackage=true
 
     - name: Upload APK Artifact
       uses: actions/upload-artifact@v4
       with:
         name: android-apk-${{ github.event.inputs.build_type }}
         path: |
-          bin/${{ github.event.inputs.build_type }}/*.apk
+          bin/${{ github.event.inputs.build_type }}/**/*.apk
 
     - name: List generated files
       run: |
