@@ -15,12 +15,12 @@ jobs:
       uses: actions/checkout@v4
 
     - name: Setup .NET
-      uses: actions/setup-dotnet@v3
+      uses: actions/setup-dotnet@v4
       with:
         dotnet-version: '8.0.x'
 
     - name: Setup Java JDK
-      uses: actions/setup-java@v3
+      uses: actions/setup-java@v4
       with:
         java-version: '11'
         distribution: 'microsoft'
@@ -33,7 +33,7 @@ jobs:
         echo "PATH=$PATH:/opt/android-sdk/tools:/opt/android-sdk/platform-tools" >> $GITHUB_ENV
 
     - name: Install Android SDK
-      uses: android-actions/setup-android@v2
+      uses: android-actions/setup-android@v3
       with:
         api-level: 33
         build-tools: 33.0.2
@@ -87,7 +87,7 @@ jobs:
         find . -name "*.aab" -type f
 
     - name: Upload Signed APK
-      uses: actions/upload-artifact@v3
+      uses: actions/upload-artifact@v4
       with:
         name: signed-release-apk
         path: |
@@ -95,7 +95,7 @@ jobs:
           bin/Release/*.apk
 
     - name: Upload Signed AAB
-      uses: actions/upload-artifact@v3
+      uses: actions/upload-artifact@v4
       with:
         name: signed-android-app-bundle
         path: |
