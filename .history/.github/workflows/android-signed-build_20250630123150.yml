@@ -35,7 +35,6 @@ jobs:
     - name: Install Xamarin.Android workload
       run: |
         echo "Installing Android workload..."
-        dotnet workload install microsoft-android-sdk-full || echo "Microsoft Android SDK failed, trying generic android..."
         dotnet workload install android --skip-manifest-update || echo "First attempt failed, trying alternative method..."
         dotnet workload install android || echo "Second attempt failed, trying repair..."
         dotnet workload repair || echo "Repair failed, trying to list available workloads..."

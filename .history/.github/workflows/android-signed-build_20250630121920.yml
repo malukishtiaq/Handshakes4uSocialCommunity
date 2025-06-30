@@ -34,24 +34,12 @@ jobs:
 
     - name: Install Xamarin.Android workload
       run: |
-        echo "Installing Android workload..."
-        dotnet workload install microsoft-android-sdk-full || echo "Microsoft Android SDK failed, trying generic android..."
-        dotnet workload install android --skip-manifest-update || echo "First attempt failed, trying alternative method..."
-        dotnet workload install android || echo "Second attempt failed, trying repair..."
-        dotnet workload repair || echo "Repair failed, trying to list available workloads..."
-        dotnet workload list
-        echo "Workload installation completed"
+        dotnet workload install android
         
     - name: Verify Android workload
       run: |
-        echo "=== Installed Workloads ==="
         dotnet workload list
-        echo "=== Available SDKs ==="
-        dotnet --list-sdks
-        echo "=== Available Runtimes ==="
-        dotnet --list-runtimes
-        echo "=== Checking Android workload specifically ==="
-        dotnet workload list | grep -i android || echo "Android workload not found in list"
+        echo "Android workload should be listed above"
 
     - name: Restore NuGet packages
       run: dotnet restore WoWonder.csproj
@@ -67,14 +55,7 @@ jobs:
         KEY_ALIAS: ${{ secrets.KEY_ALIAS || 'wowondertimelinechat' }}
         KEY_PASSWORD: ${{ secrets.KEY_PASSWORD || 'wowonder' }}
       run: |
-        dotnet build WoWonder.csproj \
-          -c Release \
-          -p:AndroidBuildApplicationPackage=true \
-          -p:AndroidKeyStore=true \
-          -p:AndroidSigningKeyStore=KeyApk/wowondertimelinechat.keystore \
-          -p:AndroidSigningStorePass="${KEYSTORE_PASSWORD}" \
-          -p:AndroidSigningKeyAlias="${KEY_ALIAS}" \
-          -p:AndroidSigningKeyPass="${KEY_PASSWORD}"
+        dotnet build WoWonder.csproj -c Release -p:AndroidBuildApplicationPackage=true
 
     - name: Build Signed AAB (Android App Bundle)
       env:

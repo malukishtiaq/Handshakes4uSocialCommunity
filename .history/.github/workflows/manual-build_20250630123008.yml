@@ -38,24 +38,15 @@ jobs:
         
     - name: Install Xamarin.Android workload
       run: |
-        echo "Installing Android workload..."
-        dotnet workload install microsoft-android-sdk-full || echo "Microsoft Android SDK failed, trying generic android..."
-        dotnet workload install android --skip-manifest-update || echo "First attempt failed, trying alternative method..."
-        dotnet workload install android || echo "Second attempt failed, trying repair..."
-        dotnet workload repair || echo "Repair failed, trying to list available workloads..."
-        dotnet workload list
-        echo "Workload installation completed"
+        dotnet workload install android --skip-manifest-update
+        dotnet workload repair
         
     - name: Verify Android workload
       run: |
-        echo "=== Installed Workloads ==="
         dotnet workload list
-        echo "=== Available SDKs ==="
+        echo "Android workload should be listed above"
         dotnet --list-sdks
-        echo "=== Available Runtimes ==="
         dotnet --list-runtimes
-        echo "=== Checking Android workload specifically ==="
-        dotnet workload list | grep -i android || echo "Android workload not found in list"
         
     - name: Build APK
       if: github.event.inputs.build_type == 'apk'
