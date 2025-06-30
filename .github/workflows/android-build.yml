@@ -23,14 +23,20 @@ jobs:
     - name: Setup Java JDK
       uses: actions/setup-java@v4
       with:
-        java-version: '11'
+        java-version: '17'
         distribution: 'microsoft'
 
     - name: Install Android SDK
       uses: android-actions/setup-android@v3
       with:
-        api-level: 33
-        build-tools: 33.0.2
+        cmdline-tools-version: 12266719
+        accept-android-sdk-licenses: true
+        log-accepted-android-sdk-licenses: true
+        packages: |
+          tools
+          platform-tools
+          build-tools;33.0.2
+          platforms;android-33
 
     - name: Install Xamarin.Android workload
       run: |
