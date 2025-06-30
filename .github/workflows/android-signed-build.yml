@@ -28,14 +28,14 @@ jobs:
     - name: Install Android SDK
       uses: android-actions/setup-android@v3
       with:
-        cmdline-tools-version: 12266719
+        cmdline-tools-version: 12266803
         accept-android-sdk-licenses: true
         log-accepted-android-sdk-licenses: true
         packages: |
           platform-tools
-          build-tools;33.0.2
-          platforms;android-33
-          ndk;25.2.9519653
+          build-tools;34.0.0
+          platforms;android-34
+          ndk;26.1.10909125
 
     - name: Install Xamarin.Android workload
       run: |
@@ -58,6 +58,7 @@ jobs:
         dotnet build WoWonder.csproj \
           -c Release \
           -p:AndroidBuildApplicationPackage=true \
+          -p:TargetFrameworkVersion=v14.0 \
           -p:AndroidKeyStore=true \
           -p:AndroidSigningKeyStore=KeyApk/wowondertimelinechat.keystore \
           -p:AndroidSigningStorePass="${KEYSTORE_PASSWORD}" \
@@ -74,6 +75,7 @@ jobs:
           -c Release \
           -p:AndroidBuildApplicationPackage=true \
           -p:AndroidPackageFormat=aab \
+          -p:TargetFrameworkVersion=v14.0 \
           -p:AndroidKeyStore=true \
           -p:AndroidSigningKeyStore=KeyApk/wowondertimelinechat.keystore \
           -p:AndroidSigningStorePass="${KEYSTORE_PASSWORD}" \

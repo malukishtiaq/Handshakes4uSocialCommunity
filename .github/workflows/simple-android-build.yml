@@ -46,7 +46,7 @@ jobs:
 
     - name: Build APK
       run: |
-        dotnet build WoWonder.csproj -c ${{ github.event.inputs.build_type }} -p:AndroidBuildApplicationPackage=true
+        dotnet build WoWonder.csproj -c ${{ github.event.inputs.build_type }} -p:AndroidBuildApplicationPackage=true -p:TargetFrameworkVersion=v14.0
 
     - name: Upload APK Artifact
       uses: actions/upload-artifact@v4
