@@ -1,0 +1,138 @@
+name: Deploy Existing AAB to Play Store
+
+on:
+  workflow_dispatch:
+    inputs:
+      track:
+        description: 'Release track'
+        required: true
+        default: 'internal'
+        type: choice
+        options:
+        - internal
+        - alpha
+        - beta
+        - production
+      developer_account_id:
+        description: 'Google Play Developer Account ID'
+        required: true
+        type: string
+      package_name:
+        description: 'App Package Name'
+        required: true
+        type: string
+      artifact_name:
+        description: 'GitHub Artifact name containing AAB'
+        required: true
+        default: 'signed-android-app-bundle'
+        type: string
+      workflow_run_id:
+        description: 'Workflow run ID to get artifact from (leave empty for latest)'
+        required: false
+        type: string
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    
+    steps:
+    - name: Setup Ruby
+      uses: ruby/setup-ruby@v1
+      with:
+        ruby-version: '3.0'
+
+    - name: Install Fastlane
+      run: |
+        gem install fastlane
+        
+    - name: Create fastlane directory
+      run: mkdir -p fastlane
+
+    - name: Create Fastfile
+      run: |
+        cat > fastlane/Fastfile << 'EOF'
+        default_platform(:android)
+
+        platform :android do
+          desc "Deploy existing AAB to Google Play Store"
+          lane :deploy do
+            upload_to_play_store(
+              aab: ENV['AAB_PATH'],
+              package_name: ENV['PACKAGE_NAME'],
+              track: ENV['RELEASE_TRACK'],
+              json_key_data: ENV['GOOGLE_PLAY_JSON_KEY'],
+              skip_upload_apk: true,
+              skip_upload_metadata: true,
+              skip_upload_changelogs: true,
+              skip_upload_images: true,
+              skip_upload_screenshots: true
+            )
+          end
+        end
+        EOF
+
+    - name: Download AAB Artifact
+      uses: actions/download-artifact@v4
+      with:
+        name: ${{ github.event.inputs.artifact_name }}
+        path: ./artifacts
+        run-id: ${{ github.event.inputs.workflow_run_id }}
+        github-token: ${{ secrets.GITHUB_TOKEN }}
+
+    - name: Find AAB file in artifacts
+      id: find_aab
+      run: |
+        echo "Looking for AAB files in artifacts..."
+        find ./artifacts -type f -name "*.aab" -ls
+        
+        AAB_FILE=$(find ./artifacts -name "*.aab" -type f | head -1)
+        if [ -z "$AAB_FILE" ]; then
+          echo "❌ No AAB file found in artifact '${{ github.event.inputs.artifact_name }}'!"
+          echo "Available files:"
+          find ./artifacts -type f -ls
+          exit 1
+        fi
+        
+        echo "Found AAB: $AAB_FILE"
+        echo "aab_path=$AAB_FILE" >> $GITHUB_OUTPUT
+
+    - name: Verify AAB file
+      run: |
+        AAB_PATH="${{ steps.find_aab.outputs.aab_path }}"
+        echo "AAB file: $AAB_PATH"
+        echo "File size: $(du -h "$AAB_PATH" | cut -f1)"
+        echo "File info: $(file "$AAB_PATH")"
+
+    - name: Create Google Play Service Account JSON
+      env:
+        GOOGLE_PLAY_JSON_KEY: ${{ secrets.GOOGLE_PLAY_JSON_KEY }}
+      run: |
+        echo "Creating service account JSON file..."
+        echo "$GOOGLE_PLAY_JSON_KEY" > google-play-key.json
+
+    - name: Deploy to Play Store
+      env:
+        AAB_PATH: ${{ steps.find_aab.outputs.aab_path }}
+        PACKAGE_NAME: ${{ github.event.inputs.package_name }}
+        RELEASE_TRACK: ${{ github.event.inputs.track }}
+        GOOGLE_PLAY_JSON_KEY: ${{ secrets.GOOGLE_PLAY_JSON_KEY }}
+      run: |
+        echo "Deploying AAB to Google Play Store..."
+        echo "Track: $RELEASE_TRACK"
+        echo "Package: $PACKAGE_NAME"
+        echo "AAB: $AAB_PATH"
+        
+        fastlane android deploy
+
+    - name: Deployment Summary
+      run: |
+        echo "🎉 Successfully deployed existing AAB to Google Play Store!"
+        echo "📱 Track: ${{ github.event.inputs.track }}"
+        echo "📦 Package: ${{ github.event.inputs.package_name }}"
+        echo "🏪 Developer Account: ${{ github.event.inputs.developer_account_id }}"
+        echo "📁 Source Artifact: ${{ github.event.inputs.artifact_name }}"
+        echo ""
+        echo "Next steps:"
+        echo "1. Check Play Console for the new release"
+        echo "2. Review and publish if needed"
+        echo "3. Monitor rollout status" 

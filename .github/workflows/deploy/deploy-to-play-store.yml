@@ -1,0 +1,153 @@
+name: Deploy to Google Play Store
+
+on:
+  workflow_dispatch:
+    inputs:
+      track:
+        description: 'Release track'
+        required: true
+        default: 'internal'
+        type: choice
+        options:
+        - internal
+        - alpha
+        - beta
+        - production
+      developer_account_id:
+        description: 'Google Play Developer Account ID (e.g., 5815054519387382632)'
+        required: true
+        type: string
+      package_name:
+        description: 'App Package Name (e.g., com.example.wowonder)'
+        required: true
+        type: string
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v4
+
+    - name: Setup .NET
+      uses: actions/setup-dotnet@v4
+      with:
+        dotnet-version: '8.0.x'
+
+    - name: Setup Java JDK
+      uses: actions/setup-java@v4
+      with:
+        java-version: '17'
+        distribution: 'microsoft'
+
+    - name: Install Android SDK
+      uses: android-actions/setup-android@v3
+      with:
+        accept-android-sdk-licenses: true
+        log-accepted-android-sdk-licenses: true
+        packages: "platform-tools build-tools;34.0.0 platforms;android-34"
+
+    - name: Install Android workload
+      run: |
+        echo "=== Installing Android workload ==="
+        dotnet workload install android --include-previews
+        
+    - name: Restore NuGet packages
+      run: dotnet restore WoWonder.csproj
+
+    - name: Build Signed AAB
+      env:
+        KEYSTORE_PASSWORD: ${{ secrets.KEYSTORE_PASSWORD || 'wowonder' }}
+        KEY_ALIAS: ${{ secrets.KEY_ALIAS || 'wowondertimelinechat' }}
+        KEY_PASSWORD: ${{ secrets.KEY_PASSWORD || 'wowonder' }}
+      run: |
+        dotnet build WoWonder.csproj \
+          -c Release \
+          -p:AndroidBuildApplicationPackage=true \
+          -p:AndroidPackageFormat=aab \
+          -p:AndroidKeyStore=true \
+          -p:AndroidSigningKeyStore=KeyApk/wowondertimelinechat.keystore \
+          -p:AndroidSigningStorePass="${KEYSTORE_PASSWORD}" \
+          -p:AndroidSigningKeyAlias="${KEY_ALIAS}" \
+          -p:AndroidSigningKeyPass="${KEY_PASSWORD}"
+
+    - name: Setup Ruby
+      uses: ruby/setup-ruby@v1
+      with:
+        ruby-version: '3.0'
+
+    - name: Install Fastlane
+      run: |
+        gem install fastlane
+        
+    - name: Create fastlane directory
+      run: mkdir -p fastlane
+
+    - name: Create Fastfile
+      run: |
+        cat > fastlane/Fastfile << 'EOF'
+        default_platform(:android)
+
+        platform :android do
+          desc "Deploy to Google Play Store"
+          lane :deploy do
+            upload_to_play_store(
+              aab: ENV['AAB_PATH'],
+              package_name: ENV['PACKAGE_NAME'],
+              track: ENV['RELEASE_TRACK'],
+              json_key_data: ENV['GOOGLE_PLAY_JSON_KEY'],
+              skip_upload_apk: true,
+              skip_upload_metadata: true,
+              skip_upload_changelogs: true,
+              skip_upload_images: true,
+              skip_upload_screenshots: true
+            )
+          end
+        end
+        EOF
+
+    - name: Create Google Play Service Account JSON
+      env:
+        GOOGLE_PLAY_JSON_KEY: ${{ secrets.GOOGLE_PLAY_JSON_KEY }}
+      run: |
+        echo "Creating service account JSON file..."
+        echo "$GOOGLE_PLAY_JSON_KEY" > google-play-key.json
+
+    - name: Find AAB file
+      id: find_aab
+      run: |
+        AAB_FILE=$(find . -name "*.aab" -type f | head -1)
+        if [ -z "$AAB_FILE" ]; then
+          echo "❌ No AAB file found!"
+          exit 1
+        fi
+        echo "Found AAB: $AAB_FILE"
+        echo "aab_path=$AAB_FILE" >> $GITHUB_OUTPUT
+
+    - name: Deploy to Play Store
+      env:
+        AAB_PATH: ${{ steps.find_aab.outputs.aab_path }}
+        PACKAGE_NAME: ${{ github.event.inputs.package_name }}
+        RELEASE_TRACK: ${{ github.event.inputs.track }}
+        GOOGLE_PLAY_JSON_KEY: ${{ secrets.GOOGLE_PLAY_JSON_KEY }}
+      run: |
+        fastlane android deploy
+
+    - name: Upload AAB as Artifact (backup)
+      uses: actions/upload-artifact@v4
+      with:
+        name: deployed-aab
+        path: ${{ steps.find_aab.outputs.aab_path }}
+
+    - name: Deployment Summary
+      run: |
+        echo "🎉 Successfully deployed to Google Play Store!"
+        echo "📱 Track: ${{ github.event.inputs.track }}"
+        echo "📦 Package: ${{ github.event.inputs.package_name }}"
+        echo "🏪 Developer Account: ${{ github.event.inputs.developer_account_id }}"
+        echo ""
+        echo "Next steps:"
+        echo "1. Check Play Console for the new release"
+        echo "2. Review and publish if needed"
+        echo "3. Monitor rollout status" 
